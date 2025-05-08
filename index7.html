@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flip Display with Unified Controls</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: black;
+      font-family: Arial, sans-serif;
+      color: white;
+    }
+
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      padding: 10px;
+    }
+
+    #scaleContainer {
+      width: 100%;
+      overflow-x: hidden; /* previously was 'hidden' */
+      overflow-y: auto;   /* allow vertical scroll */
+      height: 100vh;      /* make sure it fills the viewport height */
+    }
+
+    #scalingInner {
+      transform-origin: top left;
+      display: block; /* change from flex to block */
+      padding: 10px;
+      position: relative; /* optional: helps with absolute children */
+    }
+
+    .displayWrapper {
+      position: relative;
+      flex-shrink: 0;
+      margin-right: var(--gap, 10px);
+    }
+
+    .half {
+      position: absolute;
+      overflow: hidden;
+    }
+
+    .upper {
+      background-color: #111111;
+    }
+
+    .lower {
+      background-color: #1A1A1A;
+    }
+
+    .half img {
+      object-fit: cover;
+      display: block;
+    }
+
+    .upper img {
+      object-position: top;
+      transform-origin: top;
+    }
+
+    .lower img {
+      object-position: bottom;
+      transform-origin: bottom;
+    }
+
+    .upperNext { z-index: 1; }
+    .upperCurrent { z-index: 2; }
+    .lowerNext { z-index: 2; }
+    .lowerCurrent { z-index: 1; }
+
+    .unitRow {
+      position: absolute;
+      display: flex;/* key to make children align horizontally */
+      left: 0;
+    }
+
+    select {
+      padding: 4px;
+      font-size: 12px; /* Optional: smaller font */
+      background-color: black;
+      color: #777777;
+      border: 1px solid #555555;
+    }
+
+    button {
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <audio id="flipSound" src="sounds/421363__jaszunio15__click_157.wav" preload="auto"></audio>
+
+  <div id="controls">
+    <button onclick="startAllTransitions()">Start</button>
+  </div>
+
+  <div id="scaleContainer">
+    <div id="scalingInner"></div>
+  </div>
+
+  <script>
+    const panelData = {
+      Flashing_light: {
+        list: [
+          ["img/green_wigwag_off.png", "OFF"],
+          ["img/green_wigwag_an.gif", "ON"]
+        ]
+      },
+      D01_Carrier: {
+        list: [
+          ["img/carrier/dFEH.png",    "FEH 遠東水翼船"],
+          ["img/carrier/dHMH.png",    "HMH 港澳飛翼船"],
+          ["img/carrier/dHSF.png",    "HSF 快達輪"],
+          ["img/carrier/dSLK.png",    "SLK 海聯船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dCMD.png",    "CMD 招商船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dEAA.png",    "EAA 亞太航空"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dHKF.png",    "HKF 香港小輪"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dTC.png",     "Turbo Cat 港澳飛航船"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dCKS.png",    "CKS 珠江船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dTURBOJET.png", "TurboJet 噴射飛航"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/carrier/dSTS.png",    "STS 信德船務"]
+        ]
+      },
+      D02_Vovage1: {
+        list: [
+          ["img/null.png",    "BLANK"],
+          ["img/hour/1.png",  "1"],
+          ["img/hour/2.png",  "2"],
+          ["img/hour/3.png",  "3"],
+          ["img/hour/4.png",  "4"],
+          ["img/hour/5.png",  "5"],
+          ["img/hour/6.png",  "6"],
+          ["img/hour/7.png",  "7"],
+          ["img/hour/8.png",  "8"],
+          ["img/hour/9.png",  "9"],
+          ["img/hour/0.png",  "0"],
+          ["img/hour/A.png",  "A"],
+          ["img/hour/B.png",  "B"],
+          ["img/hour/C.png",  "C"],
+          ["img/hour/D.png",  "D"],
+          ["img/hour/E.png",  "E"],
+          ["img/hour/F.png",  "F"],
+          ["img/hour/G.png",  "G"],
+          ["img/hour/H.png",  "H"],
+          ["img/hour/I.png",  "I"],
+          ["img/hour/J.png",  "J"],
+          ["img/hour/K.png",  "K"],
+          ["img/hour/L.png",  "L"],
+          ["img/hour/M.png",  "M"],
+          ["img/hour/N.png",  "N"],
+          ["img/hour/O.png",  "O"],
+          ["img/hour/P.png",  "P"],
+          ["img/hour/Q.png",  "Q"],
+          ["img/hour/R.png",  "R"],
+          ["img/hour/S.png",  "S"],
+          ["img/hour/T.png",  "T"],
+          ["img/hour/U.png",  "U"],
+          ["img/hour/V.png",  "V"],
+          ["img/hour/W.png",  "W"],
+          ["img/hour/X.png",  "X"],
+          ["img/hour/Y.png",  "Y"],
+          ["img/hour/Z.png",  "Z"],
+          ["img/hour/dash.png", "DASH"],
+          ["img/hour/dot.png",  "DOT"],
+          ["img/hour/slash.png",  "SLASH"]
+        ]
+      },
+      D07_Destination: {
+        list: [
+          ["img/destination/tMacau.png",  "MACAU 澳門"],
+          ["img/destination/tShekou.png", "SHEKOU 蛇口"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tZhuhai.png", "ZHU HAI 珠海"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tZhongshan.png",  "ZHONGSHAN 中山"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tShenzhen.png", "SHENZHEN 深圳"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D08_Status: {
+        list: [
+          ["img/null.png",  "----"],
+          ["img/bstatus/bBoarding.png",   "BOARDING 速入閘"],
+          ["img/bstatus/bCancelled.png",    "CANCELLED 已取消"],
+          ["img/bstatus/bDelayed.png",    "DELAYED 延遲"],
+          ["img/bstatus/bBoardingSoon.png",   "BOARDING SOON 將入閘"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D17_Gate: {
+        list: [
+          ["img/hour/1.png",  "1"],
+          ["img/hour/2.png",  "2"],
+          ["img/hour/3.png",  "3"],
+          ["img/hour/4.png",  "4"],
+          ["img/hour/5.png",  "5"],
+          ["img/hour/6.png",  "6"],
+          ["img/hour/7.png",  "7"],
+          ["img/hour/8.png",  "8"],
+          ["img/hour/9.png",  "9"],
+          ["img/hour/0.png",  "0"]
+        ]
+      }
+    };
+    // Shared keys using same list
+    [
+      "D03_Vovage2", "D04_Vovage3", "D05_Vovage4", "D06_Vovage5",
+      "D09_Time1", "D10_Time2", "D11_Time3", "D12_Time4",
+      "D13_Retime1", "D14_Retime2", "D15_Retime3", "D16_Retime4"
+    ].forEach(name => {
+      panelData[name] = panelData.D02_Vovage1;
+    });
+
+    function createDisplay(config, parent = document.getElementById('scalingInner')) {
+      const { name, width, height, gap = 10, defaultImage = panelData[name]?.list?.[0]?.[0] || 'img/null.png' } = config;
+
+      const container = document.createElement('div');
+      container.className = 'displayWrapper';
+      container.style.setProperty('--gap', `${gap}px`);
+      container.style.width = `${width}px`;
+      container.style.height = `${height}px`;
+      parent.appendChild(container);
+
+      // Flashing lights: render but skip dropdown + transition
+      if (name.startsWith("Flashing_light")) {
+        const img = document.createElement('img');
+        img.src = defaultImage;
+        img.style.width = `${width}px`;
+        img.style.height = `${height}px`;
+        container.appendChild(img);
+
+        // Store flashing light img element for external update
+        window[`flashingImg_${name}`] = img;
+        return;
+      }
+
+      const halfHeight = height / 2;
+      const displayId = name;
+      const html = `
+        <div style="position: relative; width: ${width}px; height: ${height}px; overflow: hidden;">
+          <div class="half upper upperNext" id="${displayId}_upperNext" style="width:${width}px; height:${halfHeight}px; bottom:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half upper upperCurrent" id="${displayId}_upperCurrent" style="width:${width}px; height:${halfHeight}px; bottom:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half lower lowerCurrent" id="${displayId}_lowerCurrent" style="width:${width}px; height:${halfHeight}px; top:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half lower lowerNext" id="${displayId}_lowerNext" style="width:${width}px; height:${halfHeight}px; top:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div id="${displayId}_gapBar" style="position: absolute; top: ${halfHeight}px; width: ${width}px; height: 6px; background-color: black;"></div>
+        </div>
+      `;
+      container.innerHTML = html;
+
+      // Create dropdown
+      const selector = document.createElement('select');
+      selector.id = `${name}_selector`;
+      (panelData[name]?.list || []).forEach(([src, label]) => {
+        const opt = document.createElement('option');
+        opt.value = src;
+        opt.textContent = label;
+        selector.appendChild(opt);
+      });
+      document.getElementById('controls').insertBefore(selector, document.querySelector('#controls button'));
+
+      let currentImage = defaultImage;
+      const options = (panelData[name]?.list || []).map(([src]) => src);
+
+      // Flip transition + special logic for D08_Status
+      window[`startTransition_${name}`] = function () {
+        const selectedImage = selector.value;
+        if (selectedImage === currentImage) return;
+
+        const currentIndex = options.indexOf(currentImage);
+        const targetIndex = options.indexOf(selectedImage);
+        if (targetIndex === -1) return;
+
+        const path = [];
+        let i = currentIndex;
+        do {
+          i = (i + 1) % options.length;
+          path.push(options[i]);
+        } while (i !== targetIndex);
+
+        let index = 0;
+        const animateNext = () => {
+          if (index >= path.length) return;
+          runSingleTransition(path[index++], animateNext);
+        };
+        animateNext();
+
+        // 🟡 Special logic: update flashing lights if this is D08_Status
+        if (name.startsWith("D08_Status_")) {
+          const unitIndex = name.split("_").pop();
+          const isBoarding = selectedImage === "img/bstatus/bBoarding.png";
+          const flashSrc = isBoarding ? "img/green_wigwag_an.gif" : "img/green_wigwag_off.png";
+
+          const leftImg = window[`flashingImg_Flashing_light_left_${unitIndex}`];
+          const rightImg = window[`flashingImg_Flashing_light_right_${unitIndex}`];
+          if (leftImg) leftImg.src = flashSrc;
+          if (rightImg) rightImg.src = flashSrc;
+        }
+      };
+
+      function runSingleTransition(nextImage, callback) {
+        function maybePlayFlipSound() {//SOUND!!FOR FUN ONLY DUNNO IF OK
+          const audio = document.getElementById("flipSound");
+          if (audio && Math.random() < 1) { // 60% chance
+            audio.currentTime = 0;
+            audio.play();
+          }
+        }
+        const upperCurrent = container.querySelector(`#${name}_upperCurrent`);
+        const lowerCurrent = container.querySelector(`#${name}_lowerCurrent`);
+        const upperNext = container.querySelector(`#${name}_upperNext`);
+        const lowerNext = container.querySelector(`#${name}_lowerNext`);
+
+        const upperCurrentImg = upperCurrent.querySelector('img');
+        const lowerCurrentImg = lowerCurrent.querySelector('img');
+        const upperNextImg = upperNext.querySelector('img');
+        const lowerNextImg = lowerNext.querySelector('img');
+
+        upperCurrentImg.src = currentImage;
+        lowerCurrentImg.src = currentImage;
+        upperNextImg.src = nextImage;
+        lowerNextImg.src = nextImage;
+        maybePlayFlipSound(); //SOUND!!FOR FUN ONLY DUNNO IF OK
+
+        upperCurrent.style.transition = 'none';
+        upperCurrentImg.style.transition = 'none';
+        lowerNext.style.transition = 'none';
+        lowerNextImg.style.transition = 'none';
+
+        upperCurrent.style.height = `${halfHeight}px`;
+        upperCurrentImg.style.height = `${halfHeight}px`;
+        lowerNext.style.height = '0px';
+        lowerNextImg.style.height = '0px';
+
+        void upperCurrent.offsetHeight;
+
+        upperCurrent.style.transition = 'height 0.5s';
+        upperCurrentImg.style.transition = 'height 0.5s';
+        lowerNext.style.transition = 'height 0.5s';
+        lowerNextImg.style.transition = 'height 0.5s';
+
+        setTimeout(() => {
+          upperCurrent.style.height = '0px';
+          upperCurrentImg.style.height = '0px';
+
+          setTimeout(() => {
+            lowerNext.style.backgroundColor = '#222222';
+            setTimeout(() => {
+              lowerNext.style.backgroundColor = '#111111';
+            }, 200);
+
+            lowerNext.style.height = `${halfHeight}px`;
+            lowerNextImg.style.height = `${halfHeight}px`;
+
+            setTimeout(() => {
+              currentImage = nextImage;
+              upperCurrentImg.src = currentImage;
+              lowerCurrentImg.src = currentImage;
+              upperNextImg.src = currentImage;
+              lowerNextImg.src = currentImage;
+              if (callback) callback();
+            }, 100);
+          }, 20);
+        }, 0);
+      }
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function startAllTransitions() {
+      for (let i = 0; i < unitCount; i++) {
+        Object.keys(panelData).forEach(key => {
+          const fullName = `${key}_${i}`;
+          const fn = window[`startTransition_${fullName}`];
+          if (typeof fn === 'function') fn();
+        });
+
+        // Flashing light ON only if status is BOARDING
+        const statusSelector = document.getElementById(`D08_Status_${i}_selector`);
+        const selectedStatus = statusSelector?.value;
+        const shouldFlash = selectedStatus === "img/bstatus/bBoarding.png";
+
+        ["Flashing_light_left", "Flashing_light_right"].forEach(base => {
+          const name = `${base}_${i}`;
+          const container = document.querySelector(`.displayWrapper:has([id^="${name}_upperCurrent"])`);
+          if (container) {
+            const upperImg = container.querySelector(`#${name}_upperCurrent img`);
+            const lowerImg = container.querySelector(`#${name}_lowerCurrent img`);
+            const nextUpper = container.querySelector(`#${name}_upperNext img`);
+            const nextLower = container.querySelector(`#${name}_lowerNext img`);
+            [upperImg, lowerImg, nextUpper, nextLower].forEach(img => {
+              if (img) img.src = shouldFlash ? "img/green_wigwag_an.gif" : "img/green_wigwag_off.png";
+            });
+          }
+        });
+      }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function createHeaderRow() {
+      const headerRow = document.createElement('div');
+      headerRow.className = 'unitRow';
+      headerRow.style.position = 'absolute';
+      headerRow.style.top = '0px';
+      headerRow.style.left = '0';
+
+      const headers = [
+        { name: "H00_padding", width: 800, height: 485, gap: 0, defaultImage: "img/null.png" },
+        { name: "H01_Shipping", width: 1700, height: 485, gap: 0, defaultImage: "img/headers/h1ShippingCo.png" },
+        { name: "H02_Vovage", width: 478, height: 485, gap: 100, defaultImage: "img/headers/h3No.png" },
+        { name: "H03_Destination", width: 1700, height: 485, gap: 30, defaultImage: "img/headers/h2Destination.png" },
+        { name: "H04_Information", width: 1700, height: 485, gap: 30, defaultImage: "img/headers/h4Information.png" },
+        { name: "H05_DepartureTime", width: 1700, height: 485, gap: 30, defaultImage: "img/headers/h5DepartureTime.png" },
+        { name: "H06_RescheduledTime", width: 1700, height: 485, gap: 30, defaultImage: "img/headers/h6RescheduledTime.png" },
+        { name: "H07_Gate", width: 567, height: 485, gap: 100, defaultImage: "img/headers/h7Gate.png" }
+      ];
+
+      headers.forEach(config => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'displayWrapper';
+        wrapper.style.setProperty('--gap', `${config.gap}px`);
+        wrapper.style.width = `${config.width}px`;
+        wrapper.style.height = `${config.height}px`;
+
+        const img = document.createElement('img');
+        img.src = config.defaultImage;
+        img.style.width = `${config.width}px`;
+        img.style.height = `${config.height}px`;
+
+        wrapper.appendChild(img);
+        headerRow.appendChild(wrapper);
+      });
+
+      document.getElementById('scalingInner').appendChild(headerRow);
+    }
+
+    //------
+    //------
+
+    function createDisplayUnit(unitIndex, verticalGap) {
+      const unitContainer = document.createElement('div');
+      unitContainer.className = 'unitRow';
+      unitContainer.style.position = 'absolute';
+      const headerOffset = 700; // height of header row
+      unitContainer.style.top = `${headerOffset + unitIndex * verticalGap}px`;
+      unitContainer.style.left = '0';
+
+      const displays = [
+        { name: `Flashing_light_left_${unitIndex}`, width: 800, height: 300, gap: 0, defaultImage: "img/green_wigwag_off.png" },
+        { name: `D01_Carrier_${unitIndex}`, width: 1700, height: 300, gap: 100 },
+        { name: `D02_Vovage1_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D03_Vovage2_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D04_Vovage3_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D05_Vovage4_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D06_Vovage5_${unitIndex}`, width: 221, height: 300, gap: 100 },
+        { name: `D07_Destination_${unitIndex}`, width: 1500, height: 300, gap: 100 },
+        { name: `D08_Status_${unitIndex}`, width: 1700, height: 300, gap: 100 },
+        { name: `D09_Time1_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D10_Time2_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D11_Time3_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D12_Time4_${unitIndex}`, width: 221, height: 300, gap: 100 },
+        { name: `D13_Retime1_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D14_Retime2_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D15_Retime3_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `D16_Retime4_${unitIndex}`, width: 221, height: 300, gap: 100 },
+        { name: `D17_Gate_${unitIndex}`, width: 221, height: 300, gap: 30 },
+        { name: `Flashing_light_right_${unitIndex}`, width: 800, height: 300, gap: 0, defaultImage: "img/green_wigwag_off.png" }
+      ];
+
+      displays.forEach(d => {
+        createDisplay(d, unitContainer);
+      });
+
+      document.getElementById('scalingInner').appendChild(unitContainer); //
+
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    //displays.forEach(display => createDisplay(display));
+    const unitCount = 6; // You can set this dynamically
+    const sharedCloneKeys = [
+      "D03_Vovage2", "D04_Vovage3", "D05_Vovage4", "D06_Vovage5",
+      "D09_Time1", "D10_Time2", "D11_Time3", "D12_Time4",
+      "D13_Retime1", "D14_Retime2", "D15_Retime3", "D16_Retime4"
+    ];
+
+    // Clone panel data for each unit
+    for (let i = 0; i < unitCount; i++) {
+      for (const key in panelData) {
+        panelData[`${key}_${i}`] = { list: panelData[key].list };
+      }
+      // Also clone aliases like how you did originally
+      sharedCloneKeys.forEach(name => {
+        panelData[`${name}_${i}`] = panelData[`D02_Vovage1_${i}`];
+      });
+    }
+    const verticalGap = 450; // Suggested: 300 height + 50 spacing
+    createHeaderRow();
+    for (let i = 0; i < unitCount; i++) {
+      createDisplayUnit(i, verticalGap);
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function applyScaling() {
+      const container = document.getElementById('scaleContainer');
+      const inner = document.getElementById('scalingInner');
+      const totalWidth = inner.scrollWidth;
+      const scale = container.offsetWidth / totalWidth;
+      inner.style.transform = `scale(${scale})`;
+    }
+
+    window.addEventListener('load', applyScaling);
+    window.addEventListener('resize', applyScaling);
+
+  </script>
+
+</body>
+</html>
