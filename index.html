@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>上環港澳碼頭 - Solari Board - v1.0</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background-color: black;
+      font-family: Arial, sans-serif;
+      color: white;
+      font-size: 15px;
+    }
+
+    #controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: center;
+      padding: 10px;
+    }
+
+    #instructure{
+      font-size: 12px;
+    }
+
+    #scaleContainer {
+      width: 100%;
+      overflow-x: hidden; /* previously was 'hidden' */
+      overflow-y: auto;   /* allow vertical scroll */
+      height: 130vh;      /* make sure it fills the viewport height */
+    }
+
+    #scalingInner {
+      transform-origin: top left;
+      display: block; /* change from flex to block */
+      padding: 10px;
+      position: relative; /* optional: helps with absolute children */
+    }
+
+    .displayWrapper {
+      position: relative;
+      flex-shrink: 0;
+      margin-right: var(--gap, 10px);
+    }
+
+    .half {
+      position: absolute;
+      overflow: hidden;
+    }
+
+    .upper {
+      background-color: #111111;
+    }
+
+    .lower {
+      background-color: #1A1A1A;
+    }
+
+    .half img {
+      object-fit: cover;
+      display: block;
+    }
+
+    .upper img {
+      object-position: top;
+      transform-origin: top;
+    }
+
+    .lower img {
+      object-position: bottom;
+      transform-origin: bottom;
+    }
+
+    .upperNext { z-index: 1; }
+    .upperCurrent { z-index: 2; }
+    .lowerNext { z-index: 2; }
+    .lowerCurrent { z-index: 1; }
+
+    .unitRow {
+      position: absolute;
+      display: flex;/* key to make children align horizontally */
+      left: 0;
+    }
+
+    .centerLine {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 10px;
+      background-color: black;
+      pointer-events: none;
+      z-index: 5;
+      transform: translateY(-2.5px); /* to vertically center the 5px line */
+    }
+
+    /* Tidy up the input area */
+    .unitControls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-bottom: 6px;
+    }
+    #pushControls {
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .orange-btn {
+      background-color: #ffea00;
+      color: black;
+      border: none;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    select {
+      padding: 4px 2px;
+      font-size: 12px; /* Optional: smaller font */
+      background-color: #222;
+      color: #555;
+      border: 1px solid #333;
+    }
+
+    button {
+      padding: 4px 8px;
+    }
+  </style>
+</head>
+<body>
+  <!--0 AUDIO SUPPORT-->
+  <audio id="flipSound" src="sounds/421363__jaszunio15__click_157.wav" preload="auto"></audio>
+  <!--1 DISPLAY BLOCK-->
+  <div id="scaleContainer">
+    <div id="scalingInner"></div>
+  </div>
+  <!--2 CONTROL BLOCK-->
+  <div style="margin-top: 20px; text-align: left;">
+    <div id="pushControls" style="margin: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
+      <!-- Dropdowns will be injected here -->
+      <button onclick="pushInput()" class="orange-btn">Push</button>
+    </div>
+    <div id="manualToggleBar" onclick="toggleManual()" style="cursor: pointer; display: flex; align-items: center; padding: 10px 0; border-top: 1px solid #555; border-bottom: 1px solid #555; margin: 20px 10px;">
+      <div style="flex-grow: 1; font-weight: bold; color: #ccc;">《使用指南 User Manual》</div>
+      <div id="manualToggleIcon" style="transition: transform 0.3s;">▼</div>
+    </div>
+    <div id="manualContainer" style="display: none; padding: 10px 20px; color: #ccc; background-color: #333;">
+      <p id=instructure>（1）基本使用指南－</p>
+      <p id=instructure>《PUSH》功能：從dropdown list選擇各項內容，完成後按PUSH推上顯示</p>
+      <p id=instructure>更新由上而下，滿12行後，最頂一行會被推走，可以欣賞成個牌翻頁更新資料的過程。</p>
+
+      <div style="height: 10px;"></div>
+      <p id=instructure>（2）完整控制台使用指南－</p>
+      <p id=instructure>《SEND》功能：可直接獨立控制每個顯示板。</p>
+      <p id=instructure>《APPLY》功能：可用文字格輸入180個以逗號分隔之數字（1至40）以快速輸入《SEND》的控制台。每個牌固定有40個位。1至40對應轉牌中第一及最後一個牌。(例如：19,21,11,9,11,6,1,2,15,6,7,0,0,0,8,
+19,15,11,8,11,7,1,2,16,2,2,0,0,0,7,
+19,15,11,8,11,7,1,2,16,2,2,0,0,0,6,
+8,3,2,3,12,0,1,2,16,2,2,0,0,0,0,
+19,15,11,8,11,7,1,2,16,2,2,0,0,0,7,
+8,3,2,3,12,0,1,2,16,2,2,0,0,0,0,
+6,30,19,16,2,7,2,0,16,3,7,0,0,0,2,
+19,21,11,9,11,7,1,0,16,3,7,0,0,0,8,
+19,15,11,10,11,7,1,0,16,5,2,0,0,0,7,
+8,3,3,11,0,0,1,0,16,5,2,0,0,0,0,
+19,21,2,4,11,7,1,3,16,5,7,0,0,0,2,
+19,15,2,11,11,7,1,0,16,6,7,0,0,0,6）</p>
+      <div style="height: 10px;"></div>
+      <p id=instructure>（3）咩係翻頁顯示板？－</p>
+      <p id=instructure>Solari 顯示牌是一種機械翻板式資訊顯示系統，由義大利 Solari di Udine 公司於 1950 年代開發，曾廣泛應用於世界各地的機場、火車站及渡輪碼頭等交通樞紐。這類顯示牌以「翻頁」方式展示資料，每塊翻板由一系列印有字母、數字或符號的薄片組成，當內容更新時，翻板會快速翻動，發出獨特的機械聲響，既實用又具有觀賞性。Solari顯示牌因其高可讀性與視覺魅力，曾是城市交通資訊的代表象徵，並深植人們記憶。</p>
+      <p id=instructure>然而，隨著科技進步與數位化普及，這類機械顯示牌逐漸被 LED 或 LCD 顯示屏取代。雖然現今仍有少數地方保留 Solari 顯示牌作為懷舊設計或歷史展示，但其作為主流資訊媒介的角色已逐步淡出。儘管如此，Solari 顯示仍被許多愛好者視為一種經典象徵，代表著一個充滿旅行浪漫與機械工藝美學的時代。</p>
+      <div style="height: 10px;"></div>
+      <p id=instructure>（4）港澳碼頭翻頁顯示板－</p>
+      <p id=instructure>1985年，現今的上環港澳碼頭（Hong Kong - Macau Ferry Terminal）隨信德中心落成而一併啟用，提供來往澳門、中國大陸（珠海、深圳蛇口）高速客輪服務，及往來香港澳門的直升機航線。暫未能考究碼頭啟用時是否已設有翻頁顯示板，不過從顯示板可見當年的「港澳飛翼船」（營運至1993年，及後由中旅僑福收購成TurboCat一部分）、「海聯輪船有限公司」(油麻地小輪於1983年為往澳門飛翔船服務成立)、「香港小輪」（油麻地小輪於1989年改名，並於1993年起引進三艘Flying Cat）、及Turbo Cat（1994年中旅僑福開辦之澳門航線，直至1999年7月與遠東水翼船合併）。</p>
+      <p id=instructure>港澳碼頭翻頁顯示板一直使用至2007年，為香港最後於公共交通使用的同類顯示板。</p>
+      <div style="height: 15px;"></div>
+      <p id=instructure>＊建議用電腦睇，冇test過用手機work唔work。</p>
+      <p id=instructure>＊本網頁與任何機構或部門並無關連。本網頁不為任何不當使用負責。</p>
+    </div>
+
+    <div id="controlsToggleBar" onclick="toggleControls()" style="cursor: pointer; display: flex; align-items: center; padding: 10px 0; border-top: 1px solid #555; border-bottom: 1px solid #555; margin: 20px 10px;">
+      <div style="flex-grow: 1; font-weight: bold; color: #ccc;">《顯示完整控制台 Display Full Control Panel》</div>
+      <div id="toggleIcon" style="transition: transform 0.3s;">▼</div>
+    </div>
+    <div id="controlsContainer">
+      <div id="controls" style="background-color: #333;">
+        <div id="unitControlsWrapper" style="display: flex; flex-direction: column; gap: 4px; padding: 10px;"></div>
+        <button onclick="startAllTransitions()" class="orange-btn">Send</button>
+        <input id="bulkInput" placeholder="可用此文字格輸入180個以逗號分隔之數字（1至40）以於以上控制台顯示" style="background: transparent; color: #555555; border: 1px solid #555555; padding: 4px; width: 600px; margin-left: 10px;" />
+        <button onclick="applyBulkInput()" class="orange-btn">Apply</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const panelData = {
+      Flashing_light: {
+        list: [
+          ["img/green_wigwag_off.png", "OFF"],
+          ["img/green_wigwag_an.gif", "ON"]
+        ]
+      },
+      D01_Carrier: {
+        list: [
+          ["img/carrier/dFEH.png",    "FEH 遠東水翼船"],
+          ["img/carrier/dHMH.png",    "HMH 港澳飛翼船"],
+          ["img/carrier/dHSF.png",    "HSF 快達輪"],
+          ["img/carrier/dSLK.png",    "SLK 海聯船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dCMD.png",    "CMD 招商船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dEAA.png",    "EAA 亞太航空"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dHKF.png",    "HKF 香港小輪"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dTC.png",     "Turbo Cat 港澳飛航船"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dCKS.png",    "CKS 珠江船務"],
+          ["img/null.png",        "----"],
+          ["img/carrier/dTURBOJET.png", "TurboJet 噴射飛航"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/carrier/dSTS.png",    "STS 信德船務"]
+        ]
+      },
+      D02_Vovage1: {
+        list: [
+          ["img/null.png",    "----"],
+          ["img/hour/0.png",  "0"],
+          ["img/hour/1.png",  "1"],
+          ["img/hour/2.png",  "2"],
+          ["img/hour/3.png",  "3"],
+          ["img/hour/4.png",  "4"],
+          ["img/hour/5.png",  "5"],
+          ["img/hour/6.png",  "6"],
+          ["img/hour/7.png",  "7"],
+          ["img/hour/8.png",  "8"],
+          ["img/hour/9.png",  "9"],
+          ["img/hour/A.png",  "A"],
+          ["img/hour/B.png",  "B"],
+          ["img/hour/C.png",  "C"],
+          ["img/hour/D.png",  "D"],
+          ["img/hour/E.png",  "E"],
+          ["img/hour/F.png",  "F"],
+          ["img/hour/G.png",  "G"],
+          ["img/hour/H.png",  "H"],
+          ["img/hour/I.png",  "I"],
+          ["img/hour/J.png",  "J"],
+          ["img/hour/K.png",  "K"],
+          ["img/hour/L.png",  "L"],
+          ["img/hour/M.png",  "M"],
+          ["img/hour/N.png",  "N"],
+          ["img/hour/O.png",  "O"],
+          ["img/hour/P.png",  "P"],
+          ["img/hour/Q.png",  "Q"],
+          ["img/hour/R.png",  "R"],
+          ["img/hour/S.png",  "S"],
+          ["img/hour/T.png",  "T"],
+          ["img/hour/U.png",  "U"],
+          ["img/hour/V.png",  "V"],
+          ["img/hour/W.png",  "W"],
+          ["img/hour/X.png",  "X"],
+          ["img/hour/Y.png",  "Y"],
+          ["img/hour/Z.png",  "Z"],
+          ["img/hour/dash.png", "-"],
+          ["img/hour/dot.png",  "."],
+          ["img/hour/slash.png",  "/"]
+        ]
+      },
+      D07_Destination: {
+        list: [
+          ["img/destination/tMacau.png",  "MACAU 澳門"],
+          ["img/destination/tShekou.png", "SHEKOU 蛇口"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tZhuhai.png", "ZHU HAI 珠海"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tZhongshan.png",  "ZHONGSHAN 中山"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/destination/tShenzhen.png", "SHENZHEN 深圳"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D08_Status: {
+        list: [
+          ["img/null.png",  "----"],
+          ["img/bstatus/bBoarding.png",   "速入閘"],
+          ["img/bstatus/bCancelled.png",  "已取消"],
+          ["img/bstatus/bDelayed.png",    "延遲"],
+          ["img/bstatus/bBoardingSoon.png",   "將入閘"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D09_TimeHH: {
+        list: [
+          ["img/null.png",    "----"],
+          ["img/hh/hrs_0.png", "HH 0"],
+          ["img/hh/hrs_1.png", "HH 1"],
+          ["img/hh/hrs_2.png", "HH 2"],
+          ["img/hh/hrs_3.png", "HH 3"],
+          ["img/hh/hrs_4.png", "HH 4"],
+          ["img/hh/hrs_5.png", "HH 5"],
+          ["img/hh/hrs_6.png", "HH 6"],
+          ["img/hh/hrs_7.png", "HH 7"],
+          ["img/hh/hrs_8.png", "HH 8"],
+          ["img/hh/hrs_9.png", "HH 9"],
+          ["img/hh/hrs_10.png", "HH 10"],
+          ["img/hh/hrs_11.png", "HH 11"],
+          ["img/hh/hrs_12.png", "HH 12"],
+          ["img/hh/hrs_13.png", "HH 13"],
+          ["img/hh/hrs_14.png", "HH 14"],
+          ["img/hh/hrs_15.png", "HH 15"],
+          ["img/hh/hrs_16.png", "HH 16"],
+          ["img/hh/hrs_17.png", "HH 17"],
+          ["img/hh/hrs_18.png", "HH 18"],
+          ["img/hh/hrs_19.png", "HH 19"],
+          ["img/hh/hrs_20.png", "HH 20"],
+          ["img/hh/hrs_21.png", "HH 21"],
+          ["img/hh/hrs_22.png", "HH 22"],
+          ["img/hh/hrs_23.png", "HH 23"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D13_RetimeHH: {
+        list: [
+          ["img/null.png",    "----"],
+          ["img/hh/hrs_0.png", "HH 0"],
+          ["img/hh/hrs_1.png", "HH 1"],
+          ["img/hh/hrs_2.png", "HH 2"],
+          ["img/hh/hrs_3.png", "HH 3"],
+          ["img/hh/hrs_4.png", "HH 4"],
+          ["img/hh/hrs_5.png", "HH 5"],
+          ["img/hh/hrs_6.png", "HH 6"],
+          ["img/hh/hrs_7.png", "HH 7"],
+          ["img/hh/hrs_8.png", "HH 8"],
+          ["img/hh/hrs_9.png", "HH 9"],
+          ["img/hh/hrs_10.png", "HH 10"],
+          ["img/hh/hrs_11.png", "HH 11"],
+          ["img/hh/hrs_12.png", "HH 12"],
+          ["img/hh/hrs_13.png", "HH 13"],
+          ["img/hh/hrs_14.png", "HH 14"],
+          ["img/hh/hrs_15.png", "HH 15"],
+          ["img/hh/hrs_16.png", "HH 16"],
+          ["img/hh/hrs_17.png", "HH 17"],
+          ["img/hh/hrs_18.png", "HH 18"],
+          ["img/hh/hrs_19.png", "HH 19"],
+          ["img/hh/hrs_20.png", "HH 20"],
+          ["img/hh/hrs_21.png", "HH 21"],
+          ["img/hh/hrs_22.png", "HH 22"],
+          ["img/hh/hrs_23.png", "HH 23"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      },
+      D17_Gate: {
+        list: [
+          ["img/null.png",    "----"],
+          ["img/gate/gate_1.png", "Gate 1"],
+          ["img/gate/gate_2.png", "Gate 2"],
+          ["img/gate/gate_3.png", "Gate 3"],
+          ["img/gate/gate_4.png", "Gate 4"],
+          ["img/gate/gate_5.png", "Gate 5"],
+          ["img/gate/gate_6.png", "Gate 6"],
+          ["img/gate/gate_7.png", "Gate 7"],
+          ["img/gate/gate_8.png", "Gate 8"],
+          ["img/gate/gate_9.png", "Gate 9"],
+          ["img/gate/gate_10.png", "Gate 10"],
+          ["img/gate/gate_11.png", "Gate 11"],
+          ["img/gate/gate_12.png", "Gate 12"],
+          ["img/gate/gate_13.png", "Gate 13"],
+          ["img/gate/gate_14.png", "Gate 14"],
+          ["img/gate/gate_15.png", "Gate 15"],
+          ["img/gate/gate_16.png", "Gate 16"],
+          ["img/gate/gate_17.png", "Gate 17"],
+          ["img/gate/gate_18.png", "Gate 18"],
+          ["img/gate/gate_19.png", "Gate 19"],
+          ["img/gate/gate_20.png", "Gate 20"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"],
+          ["img/null.png",  "----"]
+        ]
+      }
+    };
+    // Shared keys using same list
+    [
+      "D03_Vovage2", "D04_Vovage3", "D05_Vovage4", "D06_Vovage5",
+      "D11_Time3", "D12_Time4", "D15_Retime3", "D16_Retime4"
+    ].forEach(name => {
+      panelData[name] = panelData.D02_Vovage1;
+    });
+
+    function createDisplay(config, parent = document.getElementById('scalingInner')) {
+      const { name, width, height, gap = 10, defaultImage = panelData[name]?.list?.[0]?.[0] || 'img/null.png' } = config;
+
+      const container = document.createElement('div');
+      container.className = 'displayWrapper';
+      container.style.setProperty('--gap', `${gap}px`);
+      container.style.width = `${width}px`;
+      container.style.height = `${height}px`;
+      parent.appendChild(container);
+
+      // Flashing lights: render but skip dropdown + transition
+      if (name.startsWith("Flashing_light")) {
+        const img = document.createElement('img');
+        img.src = defaultImage;
+        img.style.width = `${width}px`;
+        img.style.height = `${height}px`;
+        container.appendChild(img);
+
+        // Store flashing light img element for external update
+        window[`flashingImg_${name}`] = img;
+        return;
+      }
+
+      const halfHeight = height / 2;
+      const displayId = name;
+      const html = `
+        <div style="position: relative; width: ${width}px; height: ${height}px; overflow: hidden;">
+          <div class="half upper upperNext" id="${displayId}_upperNext" style="width:${width}px; height:${halfHeight}px; bottom:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half upper upperCurrent" id="${displayId}_upperCurrent" style="width:${width}px; height:${halfHeight}px; bottom:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half lower lowerCurrent" id="${displayId}_lowerCurrent" style="width:${width}px; height:${halfHeight}px; top:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="half lower lowerNext" id="${displayId}_lowerNext" style="width:${width}px; height:${halfHeight}px; top:${halfHeight}px;"><img src="${defaultImage}" style="width:${width}px; height:${halfHeight}px;"></div>
+          <div class="centerLine"></div>
+          <div id="${displayId}_gapBar" style="position: absolute; top: ${halfHeight}px; width: ${width}px; height: 6px; background-color: black;"></div>
+        </div>
+      `;
+      container.innerHTML = html;
+
+      // Create dropdown
+      const selector = document.createElement('select');
+      selector.id = `${name}_selector`;
+      (panelData[name]?.list || []).forEach(([src, label]) => {
+        const opt = document.createElement('option');
+        opt.value = src;
+        opt.textContent = label;
+        selector.appendChild(opt);
+      });
+
+      //Seperate dropdown to new lines, replacing:
+      //document.getElementById('controls').insertBefore(selector, document.querySelector('#controls button'));
+      let unitIndex = parseInt(name.split("_").pop(), 10);
+      let unitControlDiv = document.getElementById(`unitControls_${unitIndex}`);
+      if (!unitControlDiv) {
+        unitControlDiv = document.createElement("div");
+        unitControlDiv.id = `unitControls_${unitIndex}`;
+        unitControlDiv.className = "unitControls";
+        document.getElementById("unitControlsWrapper").appendChild(unitControlDiv);
+      }
+      unitControlDiv.appendChild(selector);
+
+
+      let currentImage = defaultImage;
+      const options = (panelData[name]?.list || []).map(([src]) => src);
+
+      // Flip transition + special logic for D08_Status
+      window[`startTransition_${name}`] = function () {
+        const selectedImage = selector.value;
+        if (selectedImage === currentImage) return;
+
+        const currentIndex = options.indexOf(currentImage);
+        const targetIndex = options.indexOf(selectedImage);
+        if (targetIndex === -1) return;
+
+        const path = [];
+        let i = currentIndex;
+        do {
+          i = (i + 1) % options.length;
+          path.push(options[i]);
+        } while (i !== targetIndex);
+
+        let index = 0;
+        const animateNext = () => {
+          if (index >= path.length) return;
+          runSingleTransition(path[index++], animateNext);
+        };
+        animateNext();
+
+        // 🟡 Special logic: update flashing lights if this is D08_Status
+        if (name.startsWith("D08_Status_")) {
+          const unitIndex = name.split("_").pop();
+          const isBoarding = selectedImage === "img/bstatus/bBoarding.png";
+          const flashSrc = isBoarding ? "img/green_wigwag_an.gif" : "img/green_wigwag_off.png";
+
+          const leftImg = window[`flashingImg_Flashing_light_left_${unitIndex}`];
+          const rightImg = window[`flashingImg_Flashing_light_right_${unitIndex}`];
+          if (leftImg) leftImg.src = flashSrc;
+          if (rightImg) rightImg.src = flashSrc;
+        }
+      };
+
+      function runSingleTransition(nextImage, callback) {
+        function maybePlayFlipSound() {//SOUND!!FOR FUN ONLY DUNNO IF OK
+          const audio = document.getElementById("flipSound");
+          if (audio && Math.random() < 1) { // 60% chance
+            audio.currentTime = 0;
+            audio.play();
+          }
+        }
+        const upperCurrent = container.querySelector(`#${name}_upperCurrent`);
+        const lowerCurrent = container.querySelector(`#${name}_lowerCurrent`);
+        const upperNext = container.querySelector(`#${name}_upperNext`);
+        const lowerNext = container.querySelector(`#${name}_lowerNext`);
+
+        const upperCurrentImg = upperCurrent.querySelector('img');
+        const lowerCurrentImg = lowerCurrent.querySelector('img');
+        const upperNextImg = upperNext.querySelector('img');
+        const lowerNextImg = lowerNext.querySelector('img');
+
+        upperCurrentImg.src = currentImage;
+        lowerCurrentImg.src = currentImage;
+        upperNextImg.src = nextImage;
+        lowerNextImg.src = nextImage;
+        maybePlayFlipSound(); //SOUND!!FOR FUN ONLY DUNNO IF OK
+
+        upperCurrent.style.transition = 'none';
+        upperCurrentImg.style.transition = 'none';
+        lowerNext.style.transition = 'none';
+        lowerNextImg.style.transition = 'none';
+
+        upperCurrent.style.height = `${halfHeight}px`;
+        upperCurrentImg.style.height = `${halfHeight}px`;
+        lowerNext.style.height = '0px';
+        lowerNextImg.style.height = '0px';
+
+        void upperCurrent.offsetHeight;
+
+        upperCurrent.style.transition = 'height 0.5s';
+        upperCurrentImg.style.transition = 'height 0.5s';
+        lowerNext.style.transition = 'height 0.5s';
+        lowerNextImg.style.transition = 'height 0.5s';
+
+        setTimeout(() => {
+          upperCurrent.style.height = '0px';
+          upperCurrentImg.style.height = '0px';
+
+          setTimeout(() => {
+            lowerNext.style.backgroundColor = '#222222';
+            setTimeout(() => {
+              lowerNext.style.backgroundColor = '#111111';
+            }, 200);
+
+            lowerNext.style.height = `${halfHeight}px`;
+            lowerNextImg.style.height = `${halfHeight}px`;
+
+            setTimeout(() => {
+              currentImage = nextImage;
+              upperCurrentImg.src = currentImage;
+              lowerCurrentImg.src = currentImage;
+              upperNextImg.src = currentImage;
+              lowerNextImg.src = currentImage;
+              if (callback) callback();
+            }, 100);//Best is 100,20,0
+          }, 20);
+        }, 0);
+      }
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function startAllTransitions() {
+      pushCount = unitCount;
+      //staggered delay included here
+      /*for (let i = 0; i < unitCount; i++) {
+        Object.keys(panelData).forEach(key => {
+          const fullName = `${key}_${i}`;
+          const fn = window[`startTransition_${fullName}`];
+          if (typeof fn === 'function') fn();
+        });*/
+      const staggerDelay = 20; // milliseconds between each panel's start
+        let delayIndex = 0;
+
+        for (let i = 0; i < unitCount; i++) {
+          const keys = [
+            "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
+            "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
+            "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3",
+            "D16_Retime4", "D17_Gate"
+          ];
+
+          keys.forEach(key => {
+            const fullName = `${key}_${i}`;
+            const fn = window[`startTransition_${fullName}`];
+            if (typeof fn === 'function') {
+              const myDelay = delayIndex * staggerDelay;
+              delayIndex++;
+
+              setTimeout(() => {
+                requestAnimationFrame(fn);
+              }, myDelay);
+            }
+          });
+
+        // Flashing light ON only if status is BOARDING
+        const statusSelector = document.getElementById(`D08_Status_${i}_selector`);
+        const selectedStatus = statusSelector?.value;
+        const shouldFlash = selectedStatus === "img/bstatus/bBoarding.png";
+
+        ["Flashing_light_left", "Flashing_light_right"].forEach(base => {
+          const name = `${base}_${i}`;
+          const container = document.querySelector(`.displayWrapper:has([id^="${name}_upperCurrent"])`);
+          if (container) {
+            const upperImg = container.querySelector(`#${name}_upperCurrent img`);
+            const lowerImg = container.querySelector(`#${name}_lowerCurrent img`);
+            const nextUpper = container.querySelector(`#${name}_upperNext img`);
+            const nextLower = container.querySelector(`#${name}_lowerNext img`);
+            [upperImg, lowerImg, nextUpper, nextLower].forEach(img => {
+              if (img) img.src = shouldFlash ? "img/green_wigwag_an.gif" : "img/green_wigwag_off.png";
+            });
+          }
+        });
+      }
+    }
+
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function createHeaderRow() {
+      const headerRow = document.createElement('div');
+      headerRow.className = 'unitRow';
+      headerRow.style.position = 'absolute';
+      headerRow.style.top = '0px';
+      headerRow.style.left = '0';
+
+      const headers = [
+        { name: "Padding", width: 450, height: 1200, gap: 0, defaultImage: "img/null.png" },
+        { name: "ShippingCompany", width: 3265, height: 1200, gap: 700, defaultImage: "img/headers/h1ShippingCo_L.png" },
+        { name: "Destination", width: 1134, height: 1200, gap: 380, defaultImage: "img/headers/h2Destination_L.png" },
+        { name: "StatusInfo", width: 1924, height: 1200, gap: 520, defaultImage: "img/headers/h4Information_L.png" },
+        { name: "Scheduled", width: 882, height: 1200, gap: 400, defaultImage: "img/headers/h5Scheduled_L.png" },
+        { name: "Departures", width: 1730, height: 1200, gap: 100, defaultImage: "img/headers/h6Departure_L.png" }
+      ];
+
+      headers.forEach(config => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'displayWrapper';
+        wrapper.style.setProperty('--gap', `${config.gap}px`);
+        wrapper.style.width = `${config.width}px`;
+        wrapper.style.height = `${config.height}px`;
+
+        const img = document.createElement('img');
+        img.src = config.defaultImage;
+        img.style.width = `${config.width}px`;
+        img.style.height = `${config.height}px`;
+
+        wrapper.appendChild(img);
+        headerRow.appendChild(wrapper);
+      });
+
+      document.getElementById('scalingInner').appendChild(headerRow);
+    }
+
+    //------
+    //------
+
+    function createDisplayUnit(unitIndex, verticalGap) {
+      const unitContainer = document.createElement('div');
+      unitContainer.className = 'unitRow';
+      unitContainer.style.position = 'absolute';
+      const headerOffset = 1450; // height of header row
+      unitContainer.style.top = `${headerOffset + unitIndex * verticalGap}px`;
+      unitContainer.style.left = '0';
+
+      const displays = [
+        { name: `Flashing_light_left_${unitIndex}`, width: 800, height: 300, gap: 100, defaultImage: "img/green_wigwag_off.png" },
+        { name: `D01_Carrier_${unitIndex}`, width: 1700, height: 300, gap: 350 },
+        { name: `D02_Vovage1_${unitIndex}`, width: 221, height: 300, gap: 20 },
+        { name: `D03_Vovage2_${unitIndex}`, width: 221, height: 300, gap: 20 },
+        { name: `D04_Vovage3_${unitIndex}`, width: 221, height: 300, gap: 20 },
+        { name: `D05_Vovage4_${unitIndex}`, width: 221, height: 300, gap: 20 },
+        { name: `D06_Vovage5_${unitIndex}`, width: 221, height: 300, gap: 350 },
+        { name: `D07_Destination_${unitIndex}`, width: 1500, height: 300, gap: 350 },
+        { name: `D08_Status_${unitIndex}`, width: 1700, height: 300, gap: 350 },
+        { name: `D09_TimeHH_${unitIndex}`, width: 500, height: 300, gap: 20 },
+        { name: `D11_Time3_${unitIndex}`, width: 221, height: 300, gap: 10 },
+        { name: `D12_Time4_${unitIndex}`, width: 221, height: 300, gap: 350 },
+        { name: `D13_RetimeHH_${unitIndex}`, width: 500, height: 300, gap: 20 },
+        { name: `D15_Retime3_${unitIndex}`, width: 221, height: 300, gap: 10 },
+        { name: `D16_Retime4_${unitIndex}`, width: 221, height: 300, gap: 250 },
+        { name: `D17_Gate_${unitIndex}`, width: 385, height: 300, gap: 100 },
+        { name: `Flashing_light_right_${unitIndex}`, width: 800, height: 300, gap: 0, defaultImage: "img/green_wigwag_off.png" }
+      ];
+
+      displays.forEach(d => {
+        createDisplay(d, unitContainer);
+      });
+
+      document.getElementById('scalingInner').appendChild(unitContainer); //
+
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    //displays.forEach(display => createDisplay(display));
+    const unitCount = 12; // You can set this dynamically
+    const sharedCloneKeys = [
+      "D03_Vovage2", "D04_Vovage3", "D05_Vovage4", "D06_Vovage5",
+      "D11_Time3", "D12_Time4", "D15_Retime3", "D16_Retime4"
+    ];
+
+    // Clone panel data for each unit
+    for (let i = 0; i < unitCount; i++) {
+      for (const key in panelData) {
+        panelData[`${key}_${i}`] = { list: panelData[key].list };
+      }
+      // Also clone aliases like how you did originally
+      sharedCloneKeys.forEach(name => {
+        panelData[`${name}_${i}`] = panelData[`D02_Vovage1_${i}`];
+      });
+    }
+    const verticalGap = 520; // Suggested: 300 height + 50 spacing
+    createHeaderRow();
+    for (let i = 0; i < unitCount; i++) {
+      createDisplayUnit(i, verticalGap);
+    }
+    //-----------------------------------------------------------------------------------------------------------------------------------
+    //-----------------------------------------------------------------------------------------------------------------------------------
+
+    function applyScaling() {
+      const container = document.getElementById('scaleContainer');
+      const inner = document.getElementById('scalingInner');
+      const totalWidth = inner.scrollWidth;
+      const scale = container.offsetWidth / totalWidth;
+      inner.style.transform = `scale(${scale})`;
+    }
+
+    window.addEventListener('load', applyScaling);
+    window.addEventListener('resize', applyScaling);
+
+    //NEW PUSH FEATURE v0.9
+    let pushCount = 0;
+
+    const pushKeys = [
+      "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
+      "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
+      "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3", "D16_Retime4", "D17_Gate"
+    ];
+
+    const pushDropdowns = {};
+    const pushControlsDiv = document.getElementById("pushControls");
+
+    pushKeys.forEach(key => {
+      const sel = document.createElement("select");
+      sel.id = `push_${key}`;
+      panelData[key]?.list.forEach(([src, label], i) => {
+        const opt = document.createElement("option");
+        opt.value = i;
+        opt.textContent = label;
+        sel.appendChild(opt);
+      });
+      pushControlsDiv.appendChild(sel);
+      pushDropdowns[key] = sel;
+    });
+
+    function pushInput() {
+      const selectedIndexes = pushKeys.map(key => parseInt(pushDropdowns[key].value));
+      if (pushCount < unitCount) {
+        // Apply to next available row
+        applyPushDataToRow(pushCount, selectedIndexes);
+        startTransitionForRow(pushCount);
+        pushCount++;
+      } else {
+        // Perform queue shift
+        shiftUnitsUp(() => {
+          applyPushDataToRow(unitCount - 1, selectedIndexes);
+          startTransitionForRow(unitCount - 1);
+        });
+      }
+    }
+
+    function applyPushDataToRow(rowIndex, values) {
+      pushKeys.forEach((key, colIndex) => {
+        const selectorId = `${key}_${rowIndex}_selector`;
+        const dropdown = document.getElementById(selectorId);
+        if (dropdown) dropdown.selectedIndex = values[colIndex];
+      });
+    }
+
+    function startTransitionForRow(rowIndex) {
+      pushKeys.forEach(key => {
+        const fn = window[`startTransition_${key}_${rowIndex}`];
+        if (typeof fn === 'function') fn();
+      });
+    }
+
+    function shiftUnitsUp(callback) {
+      const pairs = [];
+      for (let i = 0; i < unitCount - 1; i += 2) {
+        pairs.push([[i + 1, i]]);
+        if (i + 2 < unitCount - 1) {
+          pairs[pairs.length - 1].push([i + 2, i + 1]);
+        }
+      }
+
+      let groupIndex = 0;
+
+      function shiftNextGroup() {
+        if (groupIndex >= pairs.length) {
+          callback();
+          return;
+        }
+
+        const group = pairs[groupIndex];
+        group.forEach(([fromIdx, toIdx]) => {
+          pushKeys.forEach(key => {
+            const from = document.getElementById(`${key}_${fromIdx}_selector`);
+            const to = document.getElementById(`${key}_${toIdx}_selector`);
+            if (from && to) to.selectedIndex = from.selectedIndex;
+          });
+          startTransitionForRow(toIdx);
+        });
+
+        groupIndex++;
+        setTimeout(shiftNextGroup, 8000); // wait 1s before next group
+      }
+
+      shiftNextGroup();
+    }
+
+    //END OF NEW PUSH FEATURE v0.9
+
+    //Bulk update for TEMP use!!!!
+    function applyBulkInput() {
+      const input = document.getElementById("bulkInput").value;
+      const numbers = input.split(",").map(s => parseInt(s.trim(), 10));
+      const expectedLength = 15 * unitCount;
+
+      if (numbers.length !== expectedLength) {
+        alert(`Expected ${expectedLength} numbers, but got ${numbers.length}.`);
+        return;
+      }
+
+      const keys = [
+        "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
+        "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
+        "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3",
+        "D16_Retime4", "D17_Gate"
+      ];
+
+      for (let unit = 0; unit < unitCount; unit++) {
+        for (let col = 0; col < 15; col++) {
+          const globalIndex = unit * 15 + col;
+          const valueIndex = numbers[globalIndex] - 1;
+          const key = `${keys[col]}_${unit}_selector`;
+          const dropdown = document.getElementById(key);
+          if (dropdown && dropdown.options[valueIndex]) {
+            dropdown.selectedIndex = valueIndex;
+          }
+        }
+      }
+    }
+
+    //Bulk update for TEMP use - END
+     function toggleControls() {
+        const container = document.getElementById("controlsContainer");
+        const icon = document.getElementById("toggleIcon");
+
+        const isVisible = container.style.display !== "none";
+        container.style.display = isVisible ? "none" : "block";
+        icon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
+      }
+
+      // Optional: start collapsed
+      document.getElementById("controlsContainer").style.display = "none";
+      document.getElementById("toggleIcon").style.transform = "rotate(0deg)";
+
+      function toggleManual() {
+        const container = document.getElementById("manualContainer");
+        const icon = document.getElementById("manualToggleIcon");
+
+        const isVisible = container.style.display !== "none";
+        container.style.display = isVisible ? "none" : "block";
+        icon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
+      }
+
+      document.getElementById("manualContainer").style.display = "none";
+      document.getElementById("manualToggleIcon").style.transform = "rotate(0deg)";
+
+  </script>
+
+</body>
+</html>
