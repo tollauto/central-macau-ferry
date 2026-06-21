@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>上環港澳碼頭 - Solari Board - v1.0</title>
+  <title>上環港澳碼頭 - Solari Board - v2.0</title>
   <style>
     html, body {
       margin: 0;
@@ -104,18 +104,6 @@
       gap: 4px;
       margin-bottom: 6px;
     }
-    #pushControls {
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-    .orange-btn {
-      background-color: #ffea00;
-      color: black;
-      border: none;
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-
     select {
       padding: 4px 2px;
       font-size: 12px; /* Optional: smaller font */
@@ -131,88 +119,73 @@
 </head>
 <body>
   <!--0 AUDIO SUPPORT-->
-  <audio id="flipSound" src="sounds/solari_flip_no_delay.wav" preload="auto" loop></audio>
+  <!-- Steady loopable flap sample; loudness is driven by live flap count (see updateFlipSound). -->
+  <audio id="flipSound" src="sounds/solari_flip_loop.wav" preload="auto" loop></audio>
   <!--1 DISPLAY BLOCK-->
   <div id="scaleContainer">
     <div id="scalingInner"></div>
   </div>
   <!--2 CONTROL BLOCK-->
-  <div style="margin-top: 20px; text-align: left;">
-    <div id="pushControls" style="margin: 10px; display: flex; flex-wrap: wrap; gap: 10px;">
-      <!-- Dropdowns will be injected here -->
-      <button onclick="pushInput()" class="orange-btn">Push</button>
+  <!-- Auto mode (v2.0): the board runs itself from the local clock, so the
+       Push / Send / Apply input boxes are removed. The per-panel <select>
+       elements that the flip engine reads from still live in the hidden
+       #controlsContainer below. -->
+  <div id="controlsContainer" style="display: none;">
+    <div id="controls">
+      <div id="unitControlsWrapper"></div>
     </div>
+  </div>
+  <div style="margin-top: 20px; text-align: left;">
     <div id="manualToggleBar" onclick="toggleManual()" style="cursor: pointer; display: flex; align-items: center; padding: 10px 0; border-top: 1px solid #555; border-bottom: 1px solid #555; margin: 20px 10px;">
       <div style="flex-grow: 1; font-weight: bold; color: #ccc;">《使用指南 User Manual》</div>
       <div id="manualToggleIcon" style="transition: transform 0.3s;">▼</div>
     </div>
     <div id="manualContainer" style="display: none; padding: 10px 20px; color: #ccc; background-color: #333;">
-      <p id=instructure>（1）基本使用指南－</p>
-      <p id=instructure>《PUSH》功能：從dropdown list選擇各項內容，完成後按PUSH推上顯示。</p>
-      <p id=instructure>此功能是先由上而下，滿12行後，最頂一行會被推走，可以欣賞成個牌翻頁更新資料的過程。與真實港澳碼頭翻頁顯示板一樣，更新時是以每兩行同時更新。</p>
+      <p id=instructure>（1）自動顯示說明－</p>
+      <p id=instructure>本顯示板會自動運作，無需手動操作。系統會根據你電腦的本地時間，自動顯示由現時起最接近的12班航班（即開航時間大於現時的下12班）。右上角設有數字時鐘顯示本地時間。</p>
+      <p id=instructure>凡開航時間在未來30分鐘以內的航班，「注意事項」一欄會顯示「BOARDING 速入閘」，兩旁綠色閃燈亦會同時亮起。隨著時間推進，最頂的航班開出後會被推走，下方航班順序上移，並於底部翻出新一班，與真實港澳碼頭翻頁顯示板一樣。</p>
+      <p id=instructure>（示範用：按鍵盤 ← / → 可快速倒退／前進15分鐘，方便觀賞翻頁效果。）</p>
+      <p id=instructure>航班為虛構時間表，以1998年代之四間船公司為藍本：遠東水翼船（FEH，只往澳門，1至6號閘）、港澳飛翼船（HMH，往澳門用7至8號閘、往珠海用10號閘）、招商船務（CMD，只往蛇口，10號閘）、亞太航空（EAA，直升機服務，不設閘口）。多數航班往澳門，往珠海及蛇口較疏落；日間FEH及HMH約每15分鐘一班，凌晨及深夜約30分鐘一班，且只有FEH於午夜後仍有服務。</p>
       <div style="height: 10px;"></div>
-      <p id=instructure>（2）完整控制台使用指南－</p>
-      <p id=instructure>可以先用以下APPLY功能複制貼上下列字串，再按SEND快速填滿顯示牌。最後再個別用PUSH更新。</p>
-      <p id=instructure>《SEND》功能：直接獨立控制每個顯示板。</p>
-      <p id=instructure>《APPLY》功能：用文字格輸入180個以逗號分隔之數字（1至40）以快速輸入《SEND》的控制台。每個牌固定有40個位。1至40對應轉牌中第一及最後一個牌。例如：</p>
-      <p id=instructure>2007年：「19,21,11,6,11,5,1,2,15,3,7,0,0,0,8,
-                              19,15,11,7,11,5,1,2,15,5,2,0,0,0,7,
-                              8,2,11,3,0,0,1,2,15,5,2,0,0,0,0,
-                              19,21,11,9,11,6,1,0,15,6,7,0,0,0,8,
-                              19,15,11,8,11,7,1,0,16,2,2,0,0,0,7,
-                              8,3,2,3,12,0,1,0,16,2,2,0,0,0,0,
-                              6,30,19,16,2,7,2,0,16,3,7,0,0,0,2,
-                              19,21,11,9,11,7,1,0,16,3,7,0,0,0,8,
-                              19,15,11,10,11,7,1,0,16,5,2,0,0,0,7,
-                              8,3,3,11,0,0,1,0,16,5,2,0,0,0,0,
-                              19,21,2,4,11,7,1,3,16,5,7,0,0,0,2,
-                              19,15,2,11,11,7,1,0,16,6,7,0,0,0,6」。</p>
-      <p id=instructure>1998年：「1,21,3,2,2,4,1,2,11,3,7,0,0,0,7,
-                              38,30,19,16,3,4,2,2,11,5,2,0,0,0,11,
-                              1,21,3,3,2,4,1,2,11,5,2,0,0,0,2,
-                              2,15,3,3,2,4,1,2,11,5,2,0,0,0,5,
-                              1,21,3,4,2,4,1,0,11,6,7,0,0,0,8,
-                              1,21,2,3,2,5,1,0,12,2,2,0,0,0,9,
-                              2,15,2,3,2,5,1,0,12,2,2,0,0,0,4,
-                              2,37,19,20,2,4,7,0,12,2,2,0,0,0,11,
-                              39,3,2,3,0,0,1,0,12,2,2,0,0,0,0,
-                              1,21,3,4,2,5,1,0,12,3,7,0,0,0,7,
-                              1,21,2,3,2,6,1,0,12,5,2,0,0,0,2,
-                              2,15,2,3,2,6,1,0,12,5,2,0,0,0,4」。</p>
-      <div style="height: 10px;"></div>
-      <p id=instructure>（3）咩係翻頁顯示板？－</p>
+      <p id=instructure>（2）咩係翻頁顯示板？－</p>
       <p id=instructure>Solari 顯示牌是一種機械翻板式資訊顯示系統，由義大利 Solari di Udine 公司於 1950 年代開發，曾廣泛應用於世界各地的機場、火車站及渡輪碼頭等交通樞紐。這類顯示牌以「翻頁」方式展示資料，每塊翻板由一系列印有字母、數字或符號的薄片組成，當內容更新時，翻板會快速翻動，發出獨特的機械聲響，既實用又具有觀賞性。Solari顯示牌因其高可讀性與視覺魅力，曾是城市交通資訊的代表象徵，並深植人們記憶。</p>
       <p id=instructure>然而，隨著科技進步與數位化普及，這類機械顯示牌逐漸被 LED 或 LCD 顯示屏取代。雖然現今仍有少數地方保留 Solari 顯示牌作為懷舊設計或歷史展示，但其作為主流資訊媒介的角色已逐步淡出。儘管如此，Solari 顯示仍被許多愛好者視為一種經典象徵，代表著一個充滿旅行浪漫與機械工藝美學的時代。</p>
       <div style="height: 10px;"></div>
-      <p id=instructure>（4）港澳碼頭翻頁顯示板－</p>
+      <p id=instructure>（3）港澳碼頭翻頁顯示板－</p>
       <p id=instructure>1985年，現今的上環港澳碼頭（Hong Kong - Macau Ferry Terminal）隨信德中心落成而一併啟用，提供來往澳門、中國大陸（珠海、深圳蛇口）高速客輪服務，及往來香港澳門的直升機航線。從顯示板可見當年「港澳飛翼船」（由1964年營運至1993年，及後由中旅僑福收購成1994年TurboCat一部分）、「海聯輪船有限公司」(油麻地小輪於1983年為往澳門飛翔船服務成立)、「香港小輪」（油麻地小輪於1989年改名，並於1993年起引進三艘Flying Cat）、及Turbo Cat（1994年中旅僑福開辦之澳門航線，直至1999年7月與遠東水翼船合併）。</p>
       <p id=instructure>港澳碼頭翻頁顯示板一直使用至2007年，為香港最後於公共交通使用的同類顯示板。於最後的使用日子，顯示板主要顯示「噴射飛航」「亞太」等航班：</p>
       <p id=instructure>－「噴射飛航」以1英文字配4數字。J為日間Jetfoil、D日間雙體船如Tricat及FlyingCat（如J0101、D0201），N為夜航Jetfoil、E為夜航雙體船、T為通宵、A及X為加班，8S赤鱲角、TP北安、SM深圳（如SM101）。(Info. credit to fb user LI William)</p>
       <p id=instructure>－「亞太」以3數字，或配1英文作尾（如210、212A）。</p>
       <p id=instructure>－「珠江、招商」以3英文及2數字（如ZHI 02珠海、ZSN 02中山、NSH 12南沙、SHE 05蛇口）。</p>
       <div style="height: 20px;"></div>
+      <p id=instructure>《更新紀錄》2026.6.13 - v2.0 改為按本地時間自動顯示虛構航班，新增本地時鐘，移除手動輸入。</p>
       <p id=instructure>《更新紀錄》2025.5.15 - v1.0 Launch</p>
       <p id=instructure>＊建議使用電腦瀏覽以獲取最佳效果。</p>
       <p id=instructure>＊本網頁為個人興趣用途，與任何機構或部門並無關連。本網頁不為任何不當使用負責。</p>
     </div>
-
-    <div id="controlsToggleBar" onclick="toggleControls()" style="cursor: pointer; display: flex; align-items: center; padding: 10px 0; border-top: 1px solid #555; border-bottom: 1px solid #555; margin: 20px 10px;">
-      <div style="flex-grow: 1; font-weight: bold; color: #ccc;">《顯示完整控制台 Display Full Control Panel》</div>
-      <div id="toggleIcon" style="transition: transform 0.3s;">▼</div>
-    </div>
-    <div id="controlsContainer">
-      <div id="controls" style="background-color: #333;">
-        <div id="unitControlsWrapper" style="display: flex; flex-direction: column; gap: 4px; padding: 10px;"></div>
-        <button onclick="startAllTransitions()" class="orange-btn">Send</button>
-        <input id="bulkInput" placeholder="可用此文字格輸入180個以逗號分隔之數字（1至40）以於以上控制台顯示" style="background: transparent; color: #555555; border: 1px solid #555555; padding: 4px; width: 600px; margin-left: 10px;" />
-        <button onclick="applyBulkInput()" class="orange-btn">Apply</button>
-      </div>
-    </div>
   </div>
 
   <script>
-    let flipInProgress = 0;
-    let flipSoundActive = false;
+    let flipInProgress = 0;   // number of flaps currently mid-flip across the whole board
+    let flipStopTimer = null;
+
+    // Drive the flip-loop loudness from how many flaps are moving right now, so the
+    // sound swells when many units flip and fades as the update tails off — instead of
+    // replaying the recorded "loud intro" on every change. A short grace period keeps
+    // the loop running across the tiny gap between row-pairs (but lets a deliberate
+    // multi-second pause fall silent).
+    function updateFlipSound() {
+      const s = document.getElementById("flipSound");
+      if (!s) return;
+      if (flipInProgress > 0) {
+        if (flipStopTimer) { clearTimeout(flipStopTimer); flipStopTimer = null; }
+        s.volume = Math.min(1, 0.18 + flipInProgress * 0.06); // ~few flaps soft, many flaps loud
+        if (s.paused) s.play().catch(() => {});               // resume seamlessly (no currentTime reset)
+      } else if (!flipStopTimer) {
+        flipStopTimer = setTimeout(() => { s.pause(); flipStopTimer = null; }, 600);
+      }
+    }
+
     const panelData = {
       Flashing_light: {
         list: [
@@ -636,21 +609,6 @@
         }
       };
 
-//Manage sound NEW
-      function manageFlipSound(start) {
-        const flipSound = document.getElementById("flipSound");
-        if (!flipSound) return;
-
-        if (start && !flipSoundActive) {
-          flipSound.play();
-          flipSoundActive = true;
-        } else if (!start && flipSoundActive) {
-          flipSound.pause();
-          flipSound.currentTime = 0;
-          flipSoundActive = false;
-        }
-      }
-
 //Main core
       function runSingleTransition(nextImage, callback) {
         const upperCurrent = container.querySelector(`#${name}_upperCurrent`);
@@ -685,9 +643,9 @@
         lowerNext.style.transition = 'height 0.5s';
         lowerNextImg.style.transition = 'height 0.5s';
 
-        // 🔊 Start audio globally if not already playing
+        // 🔊 Loudness tracks the live flap count
         flipInProgress++;
-        if (flipInProgress === 1) manageFlipSound(true);
+        updateFlipSound();
 
         setTimeout(() => {
           upperCurrent.style.height = '0px';
@@ -709,9 +667,9 @@
               upperNextImg.src = currentImage;
               lowerNextImg.src = currentImage;
 
-              // 🔇 Stop audio only when all flips are done
+              // 🔇 Fade/stop as flaps finish (handled inside updateFlipSound)
               flipInProgress--;
-              if (flipInProgress === 0) manageFlipSound(false);
+              updateFlipSound();
 
               if (callback) callback();
             }, 100);
@@ -721,60 +679,6 @@
     }
     //-----------------------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------------------------------------
-
-    function startAllTransitions() {
-      pushCount = unitCount;
-      //staggered delay included here
-      /*for (let i = 0; i < unitCount; i++) {
-        Object.keys(panelData).forEach(key => {
-          const fullName = `${key}_${i}`;
-          const fn = window[`startTransition_${fullName}`];
-          if (typeof fn === 'function') fn();
-        });*/
-      const staggerDelay = 20; // milliseconds between each panel's start
-        let delayIndex = 0;
-
-        for (let i = 0; i < unitCount; i++) {
-          const keys = [
-            "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
-            "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
-            "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3",
-            "D16_Retime4", "D17_Gate"
-          ];
-
-          keys.forEach(key => {
-            const fullName = `${key}_${i}`;
-            const fn = window[`startTransition_${fullName}`];
-            if (typeof fn === 'function') {
-              const myDelay = delayIndex * staggerDelay;
-              delayIndex++;
-
-              setTimeout(() => {
-                requestAnimationFrame(fn);
-              }, myDelay);
-            }
-          });
-
-        // Flashing light ON only if status is BOARDING
-        const statusSelector = document.getElementById(`D08_Status_${i}_selector`);
-        const selectedStatus = statusSelector?.value;
-        const shouldFlash = selectedStatus === "img/bstatus/bBoarding.png";
-
-        ["Flashing_light_left", "Flashing_light_right"].forEach(base => {
-          const name = `${base}_${i}`;
-          const container = document.querySelector(`.displayWrapper:has([id^="${name}_upperCurrent"])`);
-          if (container) {
-            const upperImg = container.querySelector(`#${name}_upperCurrent img`);
-            const lowerImg = container.querySelector(`#${name}_lowerCurrent img`);
-            const nextUpper = container.querySelector(`#${name}_upperNext img`);
-            const nextLower = container.querySelector(`#${name}_lowerNext img`);
-            [upperImg, lowerImg, nextUpper, nextLower].forEach(img => {
-              if (img) img.src = shouldFlash ? "img/green_wigwag_an.gif" : "img/green_wigwag_off.png";
-            });
-          }
-        });
-      }
-    }
 
     //-----------------------------------------------------------------------------------------------------------------------------------
     //-----------------------------------------------------------------------------------------------------------------------------------
@@ -808,6 +712,23 @@
         img.style.height = `${config.height}px`;
 
         wrapper.appendChild(img);
+
+        // (1) Digital clock to the right of the "Local time / 本地時間" label,
+        // which is baked into the rightmost "Departures" header image.
+        if (config.name === "Departures") {
+          const clock = document.createElement('div');
+          clock.id = 'localClock';
+          clock.textContent = '-- --';
+          // Positioned within this header wrapper (1730 x 1200 board-units).
+          // Tweak left/top/font-size here to nudge alignment against the label.
+          clock.style.cssText =
+            'position:absolute; left:1350px; top:150px; width:760px;' +
+            'font-family:Arial,Helvetica,sans-serif; font-weight:normal;' +
+            'font-size:300px; line-height:300px; letter-spacing:-4px;' +
+            'color:#ffffff; text-align:left; white-space:nowrap;';
+          wrapper.appendChild(clock);
+        }
+
         headerRow.appendChild(wrapper);
       });
 
@@ -891,46 +812,16 @@
     window.addEventListener('load', applyScaling);
     window.addEventListener('resize', applyScaling);
 
-    //NEW PUSH FEATURE v0.9
-    let pushCount = 0;
-
+    // ============================================================================
+    // FLIP ENGINE PLUMBING (shared)
+    // The per-panel <select> elements created by createDisplay() remain the source
+    // of truth for the flip transitions. We drive them programmatically below.
+    // ============================================================================
     const pushKeys = [
       "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
       "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
       "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3", "D16_Retime4", "D17_Gate"
     ];
-
-    const pushDropdowns = {};
-    const pushControlsDiv = document.getElementById("pushControls");
-
-    pushKeys.forEach(key => {
-      const sel = document.createElement("select");
-      sel.id = `push_${key}`;
-      panelData[key]?.list.forEach(([src, label], i) => {
-        const opt = document.createElement("option");
-        opt.value = i;
-        opt.textContent = label;
-        sel.appendChild(opt);
-      });
-      pushControlsDiv.appendChild(sel);
-      pushDropdowns[key] = sel;
-    });
-
-    function pushInput() {
-      const selectedIndexes = pushKeys.map(key => parseInt(pushDropdowns[key].value));
-      if (pushCount < unitCount) {
-        // Apply to next available row
-        applyPushDataToRow(pushCount, selectedIndexes);
-        startTransitionForRow(pushCount);
-        pushCount++;
-      } else {
-        // Perform queue shift
-        shiftUnitsUp(() => {
-          applyPushDataToRow(unitCount - 1, selectedIndexes);
-          startTransitionForRow(unitCount - 1);
-        });
-      }
-    }
 
     function applyPushDataToRow(rowIndex, values) {
       pushKeys.forEach((key, colIndex) => {
@@ -947,86 +838,197 @@
       });
     }
 
-    function shiftUnitsUp(callback) {
-      const pairs = [];
-      for (let i = 0; i < unitCount - 1; i += 2) {
-        pairs.push([[i + 1, i]]);
-        if (i + 2 < unitCount - 1) {
-          pairs[pairs.length - 1].push([i + 2, i + 1]);
+    // ============================================================================
+    // (2) AUTOMATIC SCHEDULE — board follows the local clock.
+    // A hypothetical 24h timetable for the 1998-era operators FEH/HMH/CMD/EAA.
+    // Rules (from spec):
+    //   - All sails depart on the quarter hour (:00 :15 :30 :45).
+    //   - FEH: Macau only, gates 1-6. Runs 24h (only operator past midnight).
+    //   - HMH: Macau via gates 7-8; Zhu Hai (rare) via gate 10. No overnight.
+    //   - CMD: Shekou only, gate 10 (rare).
+    //   - EAA: helicopter to Macau, no gate (rare).
+    //   - FEH & HMH every 15 min in daytime; ~30 min early-morning / night.
+    // Day periods used here: 00:00-06:00 overnight (FEH only, 30 min),
+    //   06:00-07:00 early & 20:00-24:00 night (30 min), 07:00-20:00 daytime (15 min).
+    // Sail numbers are invented (2-letter prefix + 3-digit sequence), e.g. FE101.
+    // ============================================================================
+    const CARRIER_IDX = { FEH: 0, HMH: 1, CMD: 5, EAA: 38 };  // index in D01_Carrier list (EAA -> dEAA_old.png)
+    const DEST_IDX    = { MACAU: 0, SHEKOU: 1, ZHUHAI: 6 };   // index in D07_Destination list
+    const DEST_NULL_IDX = 2, CARRIER_NULL_IDX = 4;
+    // A fully blank row (used only as a safety fallback).
+    const BLANK_ROW = [CARRIER_NULL_IDX, 0,0,0,0,0, DEST_NULL_IDX, 0, 0, 0, 0, 0,0,0, 0];
+
+    function buildTimetable() {
+      const list = [];
+      const seq = { FEH: 1, HMH: 1, CMD: 12, EAA: 202 };
+      const fehGates = [1, 2, 3, 4, 5, 6];
+      const hmhGates = [7, 8];
+      let fehGateN = 0, hmhGateN = 0;
+
+      // Sail-number patterns (5 flap slots):
+      //   FEH -> "J" + group + 2-digit seq, e.g. J0101, J0102 (occasionally J1101)
+      //   HMH -> same but leading "D", e.g. D0101, D0102 (occasionally D1101)
+      //   CMD -> "SHE" + running number, e.g. SHE12, SHE13
+      //   EAA -> 3-digit + "A", last slot blank, e.g. 202A, 203A
+      function sailNumber(co) {
+        if (co === 'FEH' || co === 'HMH') {
+          const letter = (co === 'FEH') ? 'J' : 'D';
+          const group = (Math.random() < 0.25) ? '11' : '01';
+          const n = String(((seq[co]++ - 1) % 99) + 1).padStart(2, '0');
+          return letter + group + n;
+        }
+        if (co === 'CMD') return 'SHE' + (seq.CMD++);
+        return (seq.EAA++) + 'A'; // EAA helicopter; padded to a trailing blank slot
+      }
+
+      function add(t, co, dest, gate) {
+        list.push({ t, co, dest, gate, sailNo: sailNumber(co) });
+      }
+
+      for (let t = 0; t < 1440; t += 15) {
+        const slot = t % 60;                       // 0,15,30,45
+        const onHalf = (slot === 0 || slot === 30);
+        const daytime  = (t >= 420 && t < 1200);   // 07:00 - 20:00
+        const overnight = (t < 360);               // 00:00 - 06:00 (FEH only)
+
+        // FEH Macau — 24h. Every 15 min daytime, else every 30 min.
+        if (daytime || onHalf) {
+          add(t, 'FEH', 'MACAU', fehGates[fehGateN++ % fehGates.length]);
+        }
+        // HMH Macau — same cadence but no overnight service.
+        if (!overnight && (daytime || onHalf)) {
+          add(t, 'HMH', 'MACAU', hmhGates[hmhGateN++ % hmhGates.length]);
         }
       }
 
-      let groupIndex = 0;
+      // Rare services.
+      [510, 750, 1050].forEach(t => add(t, 'HMH', 'ZHUHAI', 10)); // 08:30 12:30 17:30
+      [480, 780, 1080].forEach(t => add(t, 'CMD', 'SHEKOU', 10)); // 08:00 13:00 18:00
+      [660, 720, 780, 840, 900, 960, 1020].forEach(t => add(t, 'EAA', 'MACAU', 0)); // helicopter 11:00-17:00 hourly, no gate
 
-      function shiftNextGroup() {
-        if (groupIndex >= pairs.length) {
-          callback();
-          return;
-        }
-
-        const group = pairs[groupIndex];
-        group.forEach(([fromIdx, toIdx]) => {
-          pushKeys.forEach(key => {
-            const from = document.getElementById(`${key}_${fromIdx}_selector`);
-            const to = document.getElementById(`${key}_${toIdx}_selector`);
-            if (from && to) to.selectedIndex = from.selectedIndex;
-          });
-          startTransitionForRow(toIdx);
-        });
-
-        groupIndex++;
-        setTimeout(shiftNextGroup, 6300); // wait 1s before next group
-      }
-
-      shiftNextGroup();
+      list.sort((a, b) => (a.t - b.t) || a.co.localeCompare(b.co));
+      return list;
     }
 
-    //END OF NEW PUSH FEATURE v0.9
+    const TIMETABLE = buildTimetable();
 
-    //Bulk update for TEMP use!!!!
-    function applyBulkInput() {
-      const input = document.getElementById("bulkInput").value;
-      const numbers = input.split(",").map(s => parseInt(s.trim(), 10));
-      const expectedLength = 15 * unitCount;
+    // Next 12 sails strictly after `nowMin`, wrapping past midnight when needed.
+    function getNextSails(nowMin) {
+      const wrapped = TIMETABLE.concat(TIMETABLE.map(s => ({ ...s, t: s.t + 1440 })));
+      return wrapped.filter(s => s.t > nowMin).slice(0, unitCount);
+    }
 
-      if (numbers.length !== expectedLength) {
-        alert(`Expected ${expectedLength} numbers, but got ${numbers.length}.`);
-        return;
-      }
+    // Map a single sail-number character to its index in the digit/letter list.
+    function charToIdx(c) {
+      if (c >= '0' && c <= '9') return (c.charCodeAt(0) - 48) + 1;  // 0->1 .. 9->10
+      if (c >= 'A' && c <= 'Z') return 11 + (c.charCodeAt(0) - 65); // A->11 .. Z->36
+      if (c === '-') return 37;
+      if (c === '.') return 38;
+      if (c === '/') return 39;
+      return 0; // space / unknown -> blank flap
+    }
 
-      const keys = [
-        "D01_Carrier", "D02_Vovage1", "D03_Vovage2", "D04_Vovage3", "D05_Vovage4",
-        "D06_Vovage5", "D07_Destination", "D08_Status", "D09_TimeHH",
-        "D11_Time3", "D12_Time4", "D13_RetimeHH", "D15_Retime3",
-        "D16_Retime4", "D17_Gate"
+    // Build the 15-value selectedIndex array (in pushKeys order) for one sail.
+    function sailToIndexes(sail, boarding) {
+      const t = sail.t % 1440;
+      const h = Math.floor(t / 60), m = t % 60;
+      const ch = (sail.sailNo || '').padEnd(5, ' ').slice(0, 5).split('');
+      return [
+        CARRIER_IDX[sail.co],
+        charToIdx(ch[0]), charToIdx(ch[1]), charToIdx(ch[2]), charToIdx(ch[3]), charToIdx(ch[4]),
+        DEST_IDX[sail.dest],
+        boarding ? 1 : 0,                 // D08_Status: BOARDING 速入閘 / ---
+        h + 1,                            // D09_TimeHH: hour (index = hour + 1)
+        Math.floor(m / 10) + 1,           // D11_Time3: minute tens digit
+        (m % 10) + 1,                     // D12_Time4: minute ones digit
+        0, 0, 0,                          // departure time — left blank (per spec)
+        sail.gate ? sail.gate : 0         // D17_Gate: gate number == list index, EAA = none
       ];
+    }
 
-      for (let unit = 0; unit < unitCount; unit++) {
-        for (let col = 0; col < 15; col++) {
-          const globalIndex = unit * 15 + col;
-          const valueIndex = numbers[globalIndex] - 1;
-          const key = `${keys[col]}_${unit}_selector`;
-          const dropdown = document.getElementById(key);
-          if (dropdown && dropdown.options[valueIndex]) {
-            dropdown.selectedIndex = valueIndex;
-          }
+    // Render the next 12 sails onto the 12 rows. Unchanged flaps stay put; the flip
+    // engine animates only what differs. The green wigwag lights are toggled inside
+    // each row's D08_Status transition (BOARDING -> on, otherwise off).
+    //
+    // To mimic the real board (which only processes two rows at a time), updates are
+    // staggered: rows 1&2 flip and finish, then a 2s pause, then rows 3&4 flip and
+    // finish, 2s pause, ... up to rows 11&12. The 2s gap starts only AFTER a pair's
+    // flaps have fully settled (tracked via the engine's global flipInProgress).
+    const PAIR_DELAY_MS = 1000;
+    let pendingRenderTimers = [];
+    let renderToken = 0;
+
+    function renderRow(i, sails, nowMin) {
+      const sail = sails[i];
+      const idx = sail ? sailToIndexes(sail, (sail.t - nowMin) <= 30) : BLANK_ROW;
+      applyPushDataToRow(i, idx);
+      startTransitionForRow(i);
+    }
+
+    function renderBoard(sails, nowMin) {
+      // Cancel any still-pending staggered render before starting a new one.
+      pendingRenderTimers.forEach(clearTimeout);
+      pendingRenderTimers = [];
+      const myToken = ++renderToken;
+
+      const wait = (ms, cb) => { pendingRenderTimers.push(setTimeout(cb, ms)); };
+
+      // Invoke cb once all currently-running flap flips have completed.
+      function whenFlipsDone(cb) {
+        const poll = () => {
+          if (myToken !== renderToken) return;     // superseded by a newer render
+          if (flipInProgress === 0) cb();
+          else wait(100, poll);
+        };
+        wait(60, poll); // let the just-started transitions register first
+      }
+
+      function doPair(pair) {
+        if (myToken !== renderToken) return;
+        if (pair * 2 >= unitCount) return;          // whole board done
+        for (let k = 0; k < 2; k++) {
+          const i = pair * 2 + k;
+          if (i < unitCount) renderRow(i, sails, nowMin);
         }
+        whenFlipsDone(() => wait(PAIR_DELAY_MS, () => doPair(pair + 1)));
+      }
+
+      doPair(0);
+    }
+
+    // ---- Local clock + tick loop ----
+    let simOffset = 0; // demo fast-forward offset, in minutes
+    function currentMinutes() {
+      const d = new Date();
+      return (((d.getHours() * 60 + d.getMinutes() + simOffset) % 1440) + 1440) % 1440;
+    }
+    function updateClock() {
+      const m = currentMinutes();
+      const el = document.getElementById('localClock');
+      if (el) el.textContent = Math.floor(m / 60) + ' ' + String(m % 60).padStart(2, '0');
+    }
+
+    let lastSignature = null;
+    function evaluateBoard() {
+      const now = currentMinutes();
+      const sails = getNextSails(now);
+      // Re-render only when the visible content (incl. boarding state) changes.
+      const sig = sails.map(s => s.t + s.co + s.sailNo + (((s.t - now) <= 30) ? 'B' : '')).join('|');
+      if (sig !== lastSignature) {
+        lastSignature = sig;
+        renderBoard(sails, now);
       }
     }
 
-    //Bulk update for TEMP use - END
-     function toggleControls() {
-        const container = document.getElementById("controlsContainer");
-        const icon = document.getElementById("toggleIcon");
+    function tick() { updateClock(); evaluateBoard(); }
+    setInterval(tick, 1000);
+    tick(); // initial flip-in from blank
 
-        const isVisible = container.style.display !== "none";
-        container.style.display = isVisible ? "none" : "block";
-        icon.style.transform = isVisible ? "rotate(0deg)" : "rotate(180deg)";
-      }
-
-      // Optional: start collapsed
-      document.getElementById("controlsContainer").style.display = "none";
-      document.getElementById("toggleIcon").style.transform = "rotate(0deg)";
+    // Demo aid: arrow keys fast-forward / rewind the simulated clock by 15 min.
+    document.addEventListener('keydown', e => {
+      if (e.key === 'ArrowRight') { simOffset += 15; tick(); }
+      else if (e.key === 'ArrowLeft') { simOffset -= 15; tick(); }
+    });
 
       function toggleManual() {
         const container = document.getElementById("manualContainer");
